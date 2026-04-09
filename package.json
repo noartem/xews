@@ -1,18 +1,22 @@
 {
-  "name": "mail",
-  "version": "1.0.0",
+  "name": "xews",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "check": "prettier -c .",
+    "fix": "prettier -w ."
+  },
+  "bin": {
+    "ews": "./index.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "author": "Artem Noskov <artem@noartem.ru>",
+  "license": "GPL3",
+  "type": "module",
   "dependencies": {
     "ews-javascript-api": "^0.15.3",
-    "ts-node": "^10.9.2",
-    "typescript": "^6.0.2"
+    "incur": "^0.3.25",
+    "prettier": "^3.8.1"
   }
 }
