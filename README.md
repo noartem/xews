@@ -1,4 +1,4 @@
-# xews
+# @noartem/xews
 
 `xews` is a small CLI for transferring files through Exchange Web Services by using attachments on the first draft message.
 
