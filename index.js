@@ -19,8 +19,7 @@ import {
   MessageBody,
 } from "ews-javascript-api";
 
-import { command, option, run } from "incur";
-
+import { Cli, z } from "incur";
 
 function loadConfig() {
   const configPath = path.join(os.homedir(), ".config", "xews", "auth.json");
@@ -84,16 +83,35 @@ async function getFirstDraft(service) {
   return draft;
 }
 
-/* ================= COMMANDS ================= */
+/* ================= ENTRY ================= */
 
-const upload = command({
-  name: "upload",
-  args: "<files...>",
-  async run({ args }) {
+const cli = Cli.create("xews", {
+  description:
+    "Upload and download draft attachments via Exchange Web Services",
+  version: "0.0.1",
+});
+
+cli.command("upload", {
+  description: "Attach one or more files to a draft",
+  options: z.object({
+    file: z
+      .array(z.string())
+      .default([])
+      .describe("File path to attach. Repeat --file for multiple files."),
+  }),
+  alias: { file: "f" },
+  async run(c) {
+    if (c.options.file.length === 0) {
+      return c.error({
+        code: "USAGE",
+        message: "Provide at least one file with --file <path>",
+      });
+    }
+
     const service = createService();
     const draft = await getOrCreateDraft(service);
 
-    for (const file of args.files) {
+    for (const file of c.options.file) {
       if (!fs.existsSync(file)) {
         console.warn("Skip missing:", file);
         continue;
@@ -102,8 +120,7 @@ const upload = command({
       const content = fs.readFileSync(file);
       const name = path.basename(file);
 
-      const att = draft.Attachments.AddFileAttachment(name);
-      att.Content = content;
+      draft.Attachments.AddFileAttachment(name, content.toString("base64"));
 
       console.log("Attached:", name);
     }
@@ -113,12 +130,15 @@ const upload = command({
   },
 });
 
-const download = command({
-  name: "download",
-  options: {
-    delete: option.boolean().default(false),
-  },
-  async run({ options }) {
+cli.command("download", {
+  description: "Download attachments from the first draft",
+  options: z.object({
+    delete: z
+      .boolean()
+      .default(false)
+      .describe("Delete the draft after download"),
+  }),
+  async run(c) {
     const service = createService();
     const draft = await getFirstDraft(service);
 
@@ -137,25 +157,67 @@ const download = command({
 
       await att.Load();
 
-      if (!att.Content) {
+      if (!att.Base64Content) {
         console.warn("Empty:", att.Name);
         continue;
       }
 
-      fs.writeFileSync(att.Name, Buffer.from(att.Content));
+      fs.writeFileSync(att.Name, Buffer.from(att.Base64Content, "base64"));
       console.log("Downloaded:", att.Name);
     }
 
-    if (options.delete) {
+    if (c.options.delete) {
       await draft.Delete(DeleteMode.MoveToDeletedItems);
       console.log("Draft deleted");
     }
   },
 });
 
-/* ================= ENTRY ================= */
+cli.command("list", {
+  description: "List attachments from the first draft",
+  aliases: ["ls"],
+  async run() {
+    const service = createService();
+    const draft = await getFirstDraft(service);
 
-run({
-  name: "xews",
-  commands: [upload, download],
+    if (!draft) {
+      console.log("No drafts found");
+      return;
+    }
+
+    if (!draft.HasAttachments) {
+      console.log("No attachments");
+      return;
+    }
+
+    for (const att of draft.Attachments.Items) {
+      const size = typeof att.Size === "number" ? att.Size : "-";
+      console.log(`${size}\t${att.Name}`);
+    }
+  },
 });
+
+cli.command("clear", {
+  description: "Delete all attachments from the first draft",
+  async run() {
+    const service = createService();
+    const draft = await getFirstDraft(service);
+
+    if (!draft) {
+      console.log("No drafts found");
+      return;
+    }
+
+    if (!draft.HasAttachments) {
+      console.log("No attachments");
+      return;
+    }
+
+    draft.Attachments.Clear();
+    await draft.Update(null);
+
+    console.log("Attachments cleared");
+  },
+});
+
+await cli.serve();
