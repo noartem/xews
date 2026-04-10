@@ -3,6 +3,7 @@
 import * as os from "os";
 import * as fs from "fs";
 import * as path from "path";
+import { spawnSync } from "child_process";
 
 import {
   ExchangeService,
@@ -21,8 +22,53 @@ import {
 
 import { Cli, z } from "incur";
 
+const CLI_VERSION = "1.0.0";
+const CONFIG_PATH = path.join(os.homedir(), ".config", "xews", "auth.json");
+const DEFAULT_CONFIG = `${JSON.stringify(
+  {
+    email: "user@example.com",
+    password: "your-password",
+    url: "https://exchange.example.com/EWS/Exchange.asmx",
+  },
+  null,
+  2,
+)}\n`;
+
+function getEditor() {
+  return (
+    process.env.VISUAL || process.env.EDITOR || process.env.GIT_EDITOR || "vi"
+  );
+}
+
+function ensureConfigFile() {
+  fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
+
+  if (!fs.existsSync(CONFIG_PATH)) {
+    fs.writeFileSync(CONFIG_PATH, DEFAULT_CONFIG);
+  }
+
+  return CONFIG_PATH;
+}
+
+function openInEditor(filePath) {
+  const editor = getEditor();
+
+  const result = spawnSync(`${editor} ${JSON.stringify(filePath)}`, {
+    shell: true,
+    stdio: "inherit",
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`Editor exited with code ${result.status}`);
+  }
+}
+
 function loadConfig() {
-  const configPath = path.join(os.homedir(), ".config", "xews", "auth.json");
+  const configPath = CONFIG_PATH;
 
   if (!fs.existsSync(configPath)) {
     throw new Error(`Config not found: ${configPath}`);
@@ -88,7 +134,15 @@ async function getFirstDraft(service) {
 const cli = Cli.create("xews", {
   description:
     "Upload and download draft attachments via Exchange Web Services",
-  version: "0.0.1",
+  version: CLI_VERSION,
+});
+
+cli.command("init", {
+  description: "Create auth config if needed and open it in editor",
+  async run() {
+    const configPath = ensureConfigFile();
+    openInEditor(configPath);
+  },
 });
 
 cli.command("upload", {
