@@ -1,7 +1,7 @@
 {
   "name": "xews",
-  "version": "0.0.1",
-  "description": "",
+  "version": "1.0.0",
+  "description": "CLI for transferring files through Exchange drafts over EWS",
   "main": "index.js",
   "scripts": {
     "check": "prettier -c .",
@@ -10,13 +10,27 @@
   "bin": {
     "xews": "./index.js"
   },
-  "keywords": [],
+  "files": [
+    "index.js",
+    "LICENSE",
+    "README.md",
+    ".env.example"
+  ],
+  "keywords": [
+    "ews",
+    "exchange",
+    "cli",
+    "attachments",
+    "drafts"
+  ],
   "author": "Artem Noskov <artem@noartem.ru>",
-  "license": "GPL3",
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "dependencies": {
     "ews-javascript-api": "^0.15.3",
-    "incur": "^0.3.25",
+    "incur": "^0.3.25"
+  },
+  "devDependencies": {
     "prettier": "^3.8.1"
   }
 }
