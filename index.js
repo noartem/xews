@@ -18,9 +18,12 @@ import {
   FileAttachment,
   DeleteMode,
   MessageBody,
+  SearchFilter,
+  ItemSchema,
 } from "ews-javascript-api";
 
 import { Cli, z } from "incur";
+import { runSync } from "./sync.js";
 
 const CLI_VERSION = "1.0.0";
 const CONFIG_PATH = path.join(os.homedir(), ".config", "xews", "auth.json");
@@ -127,6 +130,36 @@ async function getFirstDraft(service) {
   const draft = res.Items[0];
   await draft.Load(new PropertySet(BasePropertySet.FirstClassProperties));
   return draft;
+}
+
+async function getDraftBySubject(service, subject) {
+  const filter = new SearchFilter.IsEqualTo(ItemSchema.Subject, subject);
+  const res = await service.FindItems(
+    WellKnownFolderName.Drafts,
+    filter,
+    new ItemView(1),
+  );
+
+  if (res.Items.length === 0) return null;
+
+  const draft = res.Items[0];
+  await draft.Load(new PropertySet(BasePropertySet.FirstClassProperties));
+  return draft;
+}
+
+async function getOrCreateDraftBySubject(service, subject) {
+  const draft = await getDraftBySubject(service, subject);
+
+  if (draft) return draft;
+
+  const created = new EmailMessage(service);
+  created.Subject = subject;
+  created.Body = new MessageBody(`Generated for ${subject}`);
+
+  await created.Save(WellKnownFolderName.Drafts);
+  await created.Load(new PropertySet(BasePropertySet.FirstClassProperties));
+
+  return created;
 }
 
 /* ================= ENTRY ================= */
@@ -271,6 +304,40 @@ cli.command("clear", {
     await draft.Update(null);
 
     console.log("Attachments cleared");
+  },
+});
+
+cli.command("sync", {
+  description: "Synchronize one folder through an EWS draft channel",
+  options: z.object({
+    dir: z.string().describe("Folder to synchronize"),
+    channel: z
+      .string()
+      .default("default")
+      .describe("Sync channel name stored in a dedicated draft subject"),
+    interval: z
+      .number()
+      .int()
+      .positive()
+      .default(2000)
+      .describe("Polling interval in milliseconds"),
+    once: z.boolean().default(false).describe("Run one sync cycle and exit"),
+  }),
+  alias: {
+    dir: "d",
+    channel: "c",
+  },
+  async run(c) {
+    const service = createService();
+
+    await runSync({
+      service,
+      rootDir: c.options.dir,
+      channel: c.options.channel,
+      intervalMs: c.options.interval,
+      once: c.options.once,
+      getOrCreateDraftBySubject,
+    });
   },
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "@noartem/xews",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "CLI for transferring files through Exchange drafts over EWS",
   "main": "index.js",
   "scripts": {

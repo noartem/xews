@@ -4,6 +4,8 @@
 
 It is useful when you already have EWS access and want a simple way to upload, list, download, and clear files through Exchange without opening a mail client.
 
+It can also synchronize one local folder through a dedicated draft-based channel. Sync sends changes as compressed batch attachments and removes each package after it is applied.
+
 ## Install
 
 Install from a local checkout:
@@ -58,6 +60,7 @@ Typical file transfer flow:
 xews upload --file ./archive.zip
 xews ls
 xews download
+xews sync --dir ./data --channel team-a
 ```
 
 Show help:
@@ -97,6 +100,18 @@ Clear all attachments from the first draft:
 xews clear
 ```
 
+Synchronize one local folder through a dedicated draft subject:
+
+```bash
+xews sync --dir ./tmp/a --channel local-test
+```
+
+Run a single sync cycle and exit:
+
+```bash
+xews sync --dir ./tmp/a --channel local-test --once
+```
+
 ## Commands
 
 - `init`: create `~/.config/xews/auth.json` if needed and open it in your default editor
@@ -104,6 +119,7 @@ xews clear
 - `download`: download all file attachments from the first draft into the current directory
 - `list` / `ls`: show attachment names and sizes from the first draft
 - `clear`: remove all attachments from the first draft
+- `sync`: synchronize one folder through a dedicated draft channel like `xews-sync:<channel>`
 
 ## Publish
 
